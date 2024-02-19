@@ -57,7 +57,7 @@
     "@pandacss/dev": "workspace:*",
     "@pandacss/types": "workspace:*",
     "@types/prettier": "2.7.3",
-    "@types/react": "18.2.55",
+    "@types/react": "18.2.56",
     "@types/react-dom": "18.2.19",
     "dts-bundle-generator": "9.3.1",
     "eslint-config-next": "14.1.0",
