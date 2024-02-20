@@ -23,11 +23,14 @@ export function generateTokenCss(ctx: Context, sheet: Stylesheet) {
     } else {
       // nested conditionals in semantic tokens are joined by ":", so let's split it
       const keys = key.split(':')
+
+      // if any part of the condition is missing, skip
+      if (keys.some((key) => !conditions.get(key))) continue
+
       const css = stringify(varsObj)
 
       const mapped = keys
         .map((key) => conditions.get(key))
-        .filter(Boolean)
         .map((condition) => {
           const parent = extractParentSelectors(condition)
           // ASSUMPTION: the nature of parent selectors with tokens is that they're merged

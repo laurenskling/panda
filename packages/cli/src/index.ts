@@ -17,6 +17,7 @@ import type {
   SystemStyleObject,
   TextStyles,
   Tokens,
+  ThemeVariant,
 } from '@pandacss/types'
 
 /* -----------------------------------------------------------------------------
@@ -71,6 +72,14 @@ export function defineGlobalStyles(definition: GlobalStyleObject) {
 
 export function defineUtility(utility: PropertyConfig) {
   return utility
+}
+
+export function defineThemeVariant<T extends ThemeVariant>(theme: T) {
+  return theme
+}
+
+export function defineThemeContract<C extends Partial<Omit<ThemeVariant, 'selector'>>>(_contract: C) {
+  return <T extends C & ThemeVariant>(theme: T) => defineThemeVariant(theme as T)
 }
 
 /* -----------------------------------------------------------------------------

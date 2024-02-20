@@ -7,8 +7,9 @@ import {
   walkObject,
   type CssVar,
   type CssVarOptions,
+  capitalize,
 } from '@pandacss/shared'
-import type { SemanticTokens, Tokens } from '@pandacss/types'
+import type { Recursive, SemanticTokens, ThemeVariantsMap, Tokens } from '@pandacss/types'
 import { isMatching, match } from 'ts-pattern'
 import { isCompositeTokenValue } from './is-composite'
 import { middlewares } from './middleware'
@@ -30,6 +31,7 @@ export interface TokenDictionaryOptions {
   tokens?: Tokens
   semanticTokens?: SemanticTokens
   breakpoints?: Record<string, string>
+  themes?: ThemeVariantsMap | undefined
   prefix?: string
   hash?: boolean
 }
@@ -84,7 +86,7 @@ export class TokenDictionary {
   formatCssVar = (path: string[], options: CssVarOptions): CssVar => cssVar(path.join('-'), options)
 
   registerTokens() {
-    const { tokens = {}, semanticTokens = {}, breakpoints } = this.options
+    const { tokens = {}, semanticTokens = {}, breakpoints, themes = {} } = this.options
 
     const breakpointTokens = expandBreakpoints(breakpoints)
 
@@ -97,58 +99,98 @@ export class TokenDictionary {
       },
     })
 
+    const processToken = (token: Recursive<Token>, path: string[]) => {
+      path = filterDefault(path)
+      assertTokenFormat(token)
+
+      const category = path[0]
+      const name = this.formatTokenName(path)
+
+      const node = new Token({ ...token, name, path })
+
+      node.setExtensions({
+        category,
+        prop: this.formatTokenName(path.slice(1)),
+      })
+
+      return node
+    }
+
+    const processSemantic = (token: SemanticTokens[keyof SemanticTokens], path: string[]) => {
+      path = filterDefault(path)
+      assertTokenFormat(token)
+
+      const category = path[0]
+      const name = this.formatTokenName(path)
+
+      const normalizedToken =
+        isString(token.value) || isCompositeTokenValue(token.value) ? { value: { base: token.value } } : token
+
+      const { value, ...restData } = normalizedToken
+
+      const node = new Token({
+        ...restData,
+        name,
+        value: value.base || '',
+        path,
+      })
+
+      node.setExtensions({
+        category,
+        conditions: value,
+        prop: this.formatTokenName(path.slice(1)),
+      })
+
+      return node
+    }
+
+    // theme.tokens / theme.breakpoint
     walkObject(
       computedTokens,
       (token, path) => {
-        path = filterDefault(path)
-        assertTokenFormat(token)
-
-        const category = path[0]
-        const name = this.formatTokenName(path)
-
-        const node = new Token({ ...token, name, path })
-
-        node.setExtensions({
-          category,
-          prop: this.formatTokenName(path.slice(1)),
-        })
-
+        const node = processToken(token, path)
         this.registerToken(node)
       },
       { stop: isToken },
     )
 
+    // theme.semanticTokens
     walkObject(
       semanticTokens,
       (token, path) => {
-        path = filterDefault(path)
-        assertTokenFormat(token)
-
-        const category = path[0]
-        const name = this.formatTokenName(path)
-
-        const normalizedToken =
-          isString(token.value) || isCompositeTokenValue(token.value) ? { value: { base: token.value } } : token
-
-        const { value, ...restData } = normalizedToken
-
-        const node = new Token({
-          ...restData,
-          name,
-          value: value.base || '',
-          path,
-        })
-
-        node.setExtensions({
-          category,
-          conditions: value,
-          prop: this.formatTokenName(path.slice(1)),
-        })
-
+        const node = processSemantic(token, path)
         this.registerToken(node)
       },
       { stop: isToken },
     )
+
+    // themes[name].tokens / themes[name].semanticTokens
+    Object.entries(themes).forEach(([theme, themeVariant]) => {
+      const condName = '_theme' + capitalize(theme)
+
+      // Treat theme.tokens as semanticTokens wrapped under the theme condition (e.g. _themeDark)
+      walkObject(
+        themeVariant.tokens ?? {},
+        (token, path) => {
+          const themeToken = { value: { [condName]: token.value } }
+          const node = processSemantic(themeToken, path)
+          node.setExtensions({ theme, isVirtual: true })
+          this.registerToken(node)
+        },
+        { stop: isToken },
+      )
+
+      walkObject(
+        themeVariant.semanticTokens ?? {},
+        (token, path) => {
+          const themeToken = { value: { [condName]: token.value } }
+          const node = processSemantic(themeToken, path)
+          node.setExtensions({ theme, isSemantic: true, isVirtual: true })
+          this.registerToken(node)
+        },
+        { stop: isToken },
+      )
+    })
 
     return this
   }
@@ -429,8 +471,8 @@ export class TokenDictionaryView {
   }
 
   private processVars(token: Token, group: Map<string, Map<string, string>>) {
-    const { condition, isNegative, isVirtual, var: varName } = token.extensions
-    if (isNegative || isVirtual || !condition) return
+    const { condition, isNegative, isVirtual, var: varName, theme } = token.extensions
+    if (isNegative || (!theme && isVirtual) || !condition) return
 
     if (!group.has(condition)) group.set(condition, new Map())
     group.get(condition)!.set(varName, token.value)

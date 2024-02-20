@@ -525,6 +525,10 @@ export async function main() {
         exports.push(['./jsx', createEntry('jsx')])
       }
 
+      if (ctx.config.themes) {
+        exports.push(['./themes', createEntry('themes')])
+      }
+
       if (!exists) {
         //
         const content = {

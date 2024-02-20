@@ -1,6 +1,6 @@
 import { logger } from '@pandacss/logger'
-import { isBaseCondition, toRem, withoutSpace } from '@pandacss/shared'
-import type { ConditionType, Dict, RawCondition } from '@pandacss/types'
+import { capitalize, isBaseCondition, toRem, withoutSpace } from '@pandacss/shared'
+import type { ConditionType, Dict, RawCondition, ThemeVariantsMap } from '@pandacss/types'
 import { Breakpoints } from './breakpoints'
 import { parseCondition } from './parse-condition'
 
@@ -11,6 +11,7 @@ interface Options {
   breakpoints?: Record<string, string>
   containerNames?: string[]
   containerSizes?: Record<string, string>
+  themes?: ThemeVariantsMap
 }
 
 const underscoreRegex = /^_/
@@ -32,11 +33,13 @@ export class Conditions {
     const entries = Object.entries(conditions).map(([key, value]) => [`_${key}`, parseCondition(value)])
 
     const containers = this.setupContainers()
+    const themes = this.setupThemes()
 
     this.values = {
       ...Object.fromEntries(entries),
       ...breakpoints.conditions,
       ...containers,
+      ...themes,
     }
   }
 
@@ -61,6 +64,21 @@ export class Conditions {
     })
 
     return containers
+  }
+
+  private setupThemes = () => {
+    const { themes = {} } = this.options
+
+    const themeVariants: Record<string, RawCondition> = {}
+    Object.entries(themes).forEach(([theme, themeVariant]) => {
+      const condName = '_theme' + capitalize(theme)
+      const cond = parseCondition('& ' + themeVariant.selector)
+      if (!cond) return
+
+      themeVariants[condName] = cond
+    })
+
+    return themeVariants
   }
 
   finalize = (paths: string[]) => {

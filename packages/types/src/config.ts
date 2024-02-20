@@ -68,6 +68,10 @@ export interface PresetCore {
    * Common styling or layout patterns for your project.
    */
   patterns: Record<string, PatternConfig>
+  /**
+   * Multiple themes for your project.
+   */
+  themes?: ThemeVariantsMap
 }
 
 interface ExtendablePatterns {
@@ -77,6 +81,19 @@ interface ExtendablePatterns {
 
 interface ExtendableStaticCssOptions extends StaticCssOptions {
   extend?: StaticCssOptions | undefined
+}
+
+export interface ThemeVariant extends Pick<Theme, 'tokens' | 'semanticTokens'> {
+  selector: string
+}
+
+export interface ThemeVariantsMap {
+  [name: string]: ThemeVariant
+}
+
+interface ExtendableThemeVariantsMap {
+  [name: string]: ThemeVariantsMap | ThemeVariant | undefined
+  extend?: ThemeVariantsMap | undefined
 }
 
 export interface ExtendableOptions {
@@ -105,6 +122,10 @@ export interface ExtendableOptions {
    * Common styling or layout patterns for your project.
    */
   patterns?: ExtendablePatterns
+  /**
+   * The theme variants for your project.
+   */
+  themes?: ExtendableThemeVariantsMap
 }
 
 export interface ImportMapInput {
