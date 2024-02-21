@@ -1,5 +1,29 @@
 # @pandacss/parser
 
+## 0.32.1
+
+### Patch Changes
+
+- f419993: - Prevent extracting style props of `styled` when not explicitly imported
+
+  - Allow using multiple aliases for the same identifier for the `/css` entrypoints just like `/patterns` and `/recipes`
+
+  ```ts
+  import { css } from '../styled-system/css'
+  import { css as css2 } from '../styled-system/css'
+
+  css({ display: 'flex' })
+  css2({ flexDirection: 'column' }) // this wasn't working before, now it does
+  ```
+
+- Updated dependencies [f419993]
+  - @pandacss/core@0.32.1
+  - @pandacss/config@0.32.1
+  - @pandacss/extractor@0.32.1
+  - @pandacss/logger@0.32.1
+  - @pandacss/shared@0.32.1
+  - @pandacss/types@0.32.1
+
 ## 0.32.0
 
 ### Minor Changes
